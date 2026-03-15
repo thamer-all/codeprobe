@@ -173,6 +173,10 @@ export function registerSecurityCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? 'prompts');
 

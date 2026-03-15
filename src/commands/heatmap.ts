@@ -77,6 +77,10 @@ export function registerHeatmapCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean; top: string },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
       const topN = parseInt(options.top, 10) || 30;

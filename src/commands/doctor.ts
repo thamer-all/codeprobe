@@ -172,6 +172,10 @@ export function registerDoctorCommand(program: Command): void {
     .description('Environment diagnostics — check dependencies, configuration, and setup')
     .option('--json', 'Output diagnostics as JSON')
     .action(async (options: { json?: boolean }) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
 
       const checks = await doctorRunner();

@@ -120,6 +120,10 @@ export function registerExplainCommand(program: Command): void {
       promptFile: string,
       options: { json?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const filePath = resolvePath(promptFile);
 

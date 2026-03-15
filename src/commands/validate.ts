@@ -203,6 +203,10 @@ export function registerValidateCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
       const { glob } = await import('glob');
