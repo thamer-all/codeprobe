@@ -7,7 +7,7 @@ import { Command } from 'commander';
 import { resolvePath } from '../utils/paths.js';
 import { walkDirectory } from '../utils/fs.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { formatTokens, formatPercentage } from '../utils/output.js';
 import { setLogLevel } from '../utils/logger.js';
 import type { SimulationResult, SimulationTarget } from '../types/context.js';
@@ -103,6 +103,14 @@ export function registerSimulateCommand(program: Command): void {
 
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
+
+      try {
+        await stat(targetPath);
+      } catch {
+        console.error(`Error: path not found: ${targetPath}`);
+        process.exitCode = 1;
+        return;
+      }
 
       const result = await repositorySimulator(targetPath, options.target);
 

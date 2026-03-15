@@ -9,7 +9,7 @@ import { Command } from 'commander';
 import { resolvePath } from '../utils/paths.js';
 import { walkDirectory, getRelativePath } from '../utils/fs.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { formatTokens, formatPercentage, formatBar } from '../utils/output.js';
 import { setLogLevel } from '../utils/logger.js';
 import { dirname } from 'node:path';
@@ -92,6 +92,14 @@ export function registerMapCommand(program: Command): void {
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
       const maxDepth = parseInt(options.depth, 10) || 3;
+
+      try {
+        await stat(targetPath);
+      } catch {
+        console.error(`Error: path not found: ${targetPath}`);
+        process.exitCode = 1;
+        return;
+      }
 
       const contextMap = await buildContextMap(targetPath, maxDepth);
 

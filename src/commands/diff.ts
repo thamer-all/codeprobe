@@ -5,6 +5,7 @@
 import { Command } from 'commander';
 import { readTextFile, fileExists } from '../utils/fs.js';
 import { resolvePath } from '../utils/paths.js';
+import { setLogLevel } from '../utils/logger.js';
 import type { PromptSpec } from '../types/prompt.js';
 
 interface DiffField {
@@ -88,6 +89,10 @@ export function registerDiffCommand(program: Command): void {
       b: string,
       options: { json?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const pathA = resolvePath(a);
       const pathB = resolvePath(b);

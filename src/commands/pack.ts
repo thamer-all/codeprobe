@@ -10,7 +10,7 @@ import { Command } from 'commander';
 import { resolvePath } from '../utils/paths.js';
 import { walkDirectory, getRelativePath } from '../utils/fs.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { formatTokens, formatTable, formatPercentage } from '../utils/output.js';
 import { loadConfig } from '../utils/config.js';
 import { setLogLevel } from '../utils/logger.js';
@@ -153,6 +153,14 @@ export function registerPackCommand(program: Command): void {
 
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
+
+      try {
+        await stat(targetPath);
+      } catch {
+        console.error(`Error: path not found: ${targetPath}`);
+        process.exitCode = 1;
+        return;
+      }
 
       const plan = await contextPacker(targetPath, options.target);
 
