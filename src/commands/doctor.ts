@@ -8,6 +8,7 @@ import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { setLogLevel } from '../utils/logger.js';
 import type { DiagnosticCheck } from '../types/diagnostics.js';
 
 const execFileAsync = promisify(execFile);

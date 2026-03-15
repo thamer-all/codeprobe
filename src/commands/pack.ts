@@ -13,6 +13,7 @@ import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
 import { readFile } from 'node:fs/promises';
 import { formatTokens, formatTable, formatPercentage } from '../utils/output.js';
 import { loadConfig } from '../utils/config.js';
+import { setLogLevel } from '../utils/logger.js';
 import type { PackPlan, FileTokenInfo } from '../types/context.js';
 
 const DEFAULT_IGNORE_DIRS = new Set([
@@ -146,6 +147,10 @@ export function registerPackCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean; target: string; optimize?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
 

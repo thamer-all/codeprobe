@@ -5,6 +5,7 @@
 import { Command } from 'commander';
 import { resolvePath } from '../utils/paths.js';
 import { walkDirectory, getRelativePath, readTextFile } from '../utils/fs.js';
+import { setLogLevel } from '../utils/logger.js';
 import type { MCPAsset } from '../types/agent.js';
 
 const DEFAULT_IGNORE_DIRS = new Set([
@@ -121,6 +122,10 @@ export function registerMcpCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
 

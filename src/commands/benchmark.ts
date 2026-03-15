@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { resolvePath } from '../utils/paths.js';
 import { readTextFile, fileExists, isDirectory } from '../utils/fs.js';
 import { formatDuration, formatTable } from '../utils/output.js';
+import { setLogLevel } from '../utils/logger.js';
 import type { PromptSpec } from '../types/prompt.js';
 import type { BenchmarkResult, BenchmarkRun } from '../types/results.js';
 
@@ -103,6 +104,10 @@ export function registerBenchmarkCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean; models?: string; runs: string },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? 'prompts');
       const runs = parseInt(options.runs, 10) || 3;

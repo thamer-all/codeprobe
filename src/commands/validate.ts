@@ -7,6 +7,7 @@ import { Command } from 'commander';
 import { resolve } from 'node:path';
 import { resolvePath } from '../utils/paths.js';
 import { readTextFile, isDirectory, fileExists, getRelativePath as getRelPath } from '../utils/fs.js';
+import { setLogLevel } from '../utils/logger.js';
 
 interface ValidationResult {
   file: string;

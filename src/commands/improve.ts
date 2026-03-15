@@ -6,6 +6,7 @@
 import { Command } from 'commander';
 import { resolvePath } from '../utils/paths.js';
 import { readTextFile, fileExists } from '../utils/fs.js';
+import { setLogLevel } from '../utils/logger.js';
 import type { PromptSpec } from '../types/prompt.js';
 import type { ImprovementSuggestion } from '../types/diagnostics.js';
 
@@ -164,6 +165,10 @@ export function registerImproveCommand(program: Command): void {
       promptFile: string,
       options: { json?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const filePath = resolvePath(promptFile);
 

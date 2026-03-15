@@ -12,6 +12,7 @@ import { walkDirectory, getRelativePath } from '../utils/fs.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
 import { readFile } from 'node:fs/promises';
 import { formatBytes, formatTokens, formatTable, formatPercentage } from '../utils/output.js';
+import { setLogLevel } from '../utils/logger.js';
 import type {
   ContextAnalysis,
   ExtensionStats,
@@ -134,6 +135,10 @@ export function registerContextCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean; verbose?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
 

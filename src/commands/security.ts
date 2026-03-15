@@ -10,6 +10,7 @@ import { Command } from 'commander';
 import { resolve } from 'node:path';
 import { resolvePath } from '../utils/paths.js';
 import { readTextFile, isDirectory, fileExists, getRelativePath as getRelPath } from '../utils/fs.js';
+import { setLogLevel } from '../utils/logger.js';
 import type { SecurityFinding } from '../types/diagnostics.js';
 
 /** Security check patterns. */

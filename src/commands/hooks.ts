@@ -9,6 +9,7 @@ import { Command } from 'commander';
 import { resolvePath } from '../utils/paths.js';
 import { walkDirectory, getRelativePath, fileExists, readTextFile } from '../utils/fs.js';
 import { join } from 'node:path';
+import { setLogLevel } from '../utils/logger.js';
 import type { HookInfo } from '../types/agent.js';
 
 const DEFAULT_IGNORE_DIRS = new Set([
@@ -177,6 +178,10 @@ export function registerHooksCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
 

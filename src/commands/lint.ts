@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { resolve } from 'node:path';
 import { resolvePath } from '../utils/paths.js';
 import { readTextFile, isDirectory, fileExists, getRelativePath as getRelPath } from '../utils/fs.js';
+import { setLogLevel } from '../utils/logger.js';
 import type { LintWarning } from '../types/diagnostics.js';
 
 /**
@@ -200,6 +201,10 @@ export function registerLintCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean; fix?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? 'prompts');
 

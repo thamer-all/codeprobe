@@ -323,11 +323,17 @@ export async function runSingleTest(
     if (options.mode === 'mock') {
       output = generateMockOutput(spec.prompt, spec.system, test.input);
     } else {
-      // Live mode: placeholder for actual API call
-      // In a full implementation, this would call the Claude API
-      throw new Error(
-        'Live mode requires an API key and is not yet implemented. Use --mode mock for testing.',
-      );
+      // Live mode: call the Anthropic API
+      const { callAnthropic } = await import('./anthropicClient.js');
+      const model = spec.model ?? 'claude-sonnet-4-6';
+      const fullPrompt = spec.prompt.replace('{{input}}', test.input ?? '');
+
+      const response = await callAnthropic({
+        model,
+        system: spec.system,
+        messages: [{ role: 'user', content: fullPrompt }],
+      });
+      output = response.content;
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);

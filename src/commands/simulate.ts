@@ -9,6 +9,7 @@ import { walkDirectory } from '../utils/fs.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
 import { readFile } from 'node:fs/promises';
 import { formatTokens, formatPercentage } from '../utils/output.js';
+import { setLogLevel } from '../utils/logger.js';
 import type { SimulationResult, SimulationTarget } from '../types/context.js';
 
 const DEFAULT_IGNORE_DIRS = new Set([
@@ -96,6 +97,10 @@ export function registerSimulateCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean; target?: string },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
 

@@ -9,6 +9,7 @@ import { Command } from 'commander';
 import { resolvePath } from '../utils/paths.js';
 import { walkDirectory, getRelativePath } from '../utils/fs.js';
 import { readFile } from 'node:fs/promises';
+import { setLogLevel } from '../utils/logger.js';
 import type { ClaudeAsset, ClaudeAssetType } from '../types/agent.js';
 
 const DEFAULT_IGNORE_DIRS = new Set([
@@ -137,6 +138,10 @@ export function registerAgentsCommand(program: Command): void {
       pathArg: string | undefined,
       options: { json?: boolean },
     ) => {
+      if (options.json) {
+        setLogLevel('silent');
+      }
+
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? '.');
 

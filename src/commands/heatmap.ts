@@ -9,6 +9,7 @@ import { walkDirectory, getRelativePath } from '../utils/fs.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
 import { readFile } from 'node:fs/promises';
 import { formatTokens, formatPercentage, formatBar } from '../utils/output.js';
+import { setLogLevel } from '../utils/logger.js';
 import type { HeatmapEntry } from '../types/context.js';
 
 const DEFAULT_IGNORE_DIRS = new Set([

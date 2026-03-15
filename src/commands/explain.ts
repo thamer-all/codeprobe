@@ -6,6 +6,7 @@
 import { Command } from 'commander';
 import { resolvePath } from '../utils/paths.js';
 import { readTextFile, fileExists } from '../utils/fs.js';
+import { setLogLevel } from '../utils/logger.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
 import { formatTokens } from '../utils/output.js';
 import type { PromptSpec } from '../types/prompt.js';

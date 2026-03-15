@@ -31,7 +31,15 @@ const program = new Command();
 program
   .name('claude-test')
   .version('0.1.0')
-  .description('DevTools for Claude — context engineering toolkit for Claude Code');
+  .description('DevTools for Claude — context engineering toolkit for Claude Code')
+  .addHelpText('after', `
+Examples:
+  $ claude-test init                    Create starter project
+  $ claude-test test                    Run all prompt tests
+  $ claude-test context .               Analyze repo context usage
+  $ claude-test pack . --target 200k    Build context pack plan
+  $ claude-test doctor                  Check environment setup
+`);
 
 registerInitCommand(program);
 registerTestCommand(program);
