@@ -30,6 +30,8 @@ import { registerWorkflowCommand } from './commands/workflow.js';
 import { registerModelsCommand } from './commands/models.js';
 import { registerUiCommand } from './commands/ui.js';
 import { registerDashboardCommand } from './commands/dashboard.js';
+import { registerCostCommand } from './commands/cost.js';
+import { registerGenerateRulesCommand } from './commands/generateRules.js';
 import { handleError } from './utils/errors.js';
 
 const program = new Command();
@@ -74,5 +76,7 @@ registerWorkflowCommand(program);
 registerModelsCommand(program);
 registerUiCommand(program);
 registerDashboardCommand(program);
+registerCostCommand(program);
+registerGenerateRulesCommand(program);
 
 program.parseAsync(process.argv).catch(handleError);
