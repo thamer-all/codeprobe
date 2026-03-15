@@ -83,7 +83,7 @@ export function registerReplCommand(program: Command): void {
 
       const state: ReplState = {
         spec: null,
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         systemPrompt: '',
         lastOutput: '',
       };

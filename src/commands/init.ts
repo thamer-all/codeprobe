@@ -12,7 +12,7 @@ import { fileExists, isDirectory } from '../utils/fs.js';
 const EXAMPLE_PROMPT_SPEC = `# Example prompt spec for claude-test
 name: summarize
 description: Summarize an article into bullet points
-model: claude-sonnet-4-20250514
+model: claude-sonnet-4-6
 
 system: |
   You are a concise summarizer. Given an article, produce 3-5 bullet points
@@ -81,7 +81,7 @@ detail for each specific task.
 const EXAMPLE_CONFIG = `# claude-test configuration
 # See: https://github.com/anthropics/claude-test
 
-defaultModel: claude-sonnet-4-20250514
+defaultModel: claude-sonnet-4-6
 defaultContextTarget: 200k
 
 # Paths to ignore during context analysis
@@ -96,12 +96,12 @@ ignorePaths:
 # Enable result caching
 caching: true
 
-# Context window budget allocation (proportions summing to ~1.0)
+# Context window budget allocation (percentages)
 contextBudgets:
-  systemPrompt: 0.10
-  coreFiles: 0.50
-  docs: 0.20
-  toolMeta: 0.10
+  systemPrompt: 10
+  coreFiles: 50
+  docs: 20
+  toolMeta: 10
 
 # Watch mode settings
 watchDefaults:
@@ -111,8 +111,8 @@ watchDefaults:
 # Benchmark defaults
 benchmarkDefaults:
   models:
-    - claude-sonnet-4-20250514
-    - claude-haiku-4-20250414
+    - claude-sonnet-4-6
+    - claude-opus-4-6
   runs: 3
   warmup: true
 `;
