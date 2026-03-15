@@ -41,6 +41,9 @@ claude-test lint
 
 # Check environment readiness
 claude-test doctor
+
+# Generate a CLAUDE.md from repo analysis
+claude-test generate-claudemd
 ```
 
 ## Core Commands
@@ -66,6 +69,8 @@ claude-test doctor
 | `security [path]` | Run prompt security and injection checks |
 | `doctor` | Diagnose environment readiness |
 | `repl` | Interactive prompt playground |
+| `generate-claudemd` | Generate a CLAUDE.md from repo analysis |
+| `install-hook` | Install a Claude Code hook for prompt testing |
 
 ## Prompt Testing
 
@@ -267,6 +272,65 @@ Add to your GitHub Actions workflow:
 ```
 
 `claude-test` exits with non-zero codes on failures, making it CI-friendly.
+
+## Claude Code Integration
+
+### Context Engineering for Claude Code
+
+claude-test helps you optimize your project for Claude Code:
+
+```bash
+# Analyze how much of your repo fits in Claude's context
+claude-test context .
+
+# Get a packing plan -- what to include in CLAUDE.md
+claude-test pack . --target 200k
+
+# Generate a CLAUDE.md from repo analysis
+claude-test generate-claudemd
+
+# See which files consume the most tokens
+claude-test heatmap . --top 20
+```
+
+### Hooks
+
+Run prompt tests automatically when working with Claude Code:
+
+```bash
+# Install a hook for Claude Code
+claude-test install-hook
+
+# Or configure manually in .claude/settings.json
+```
+
+Example `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreCommit": [
+      {
+        "command": "claude-test test --json",
+        "description": "Run prompt regression tests"
+      }
+    ]
+  }
+}
+```
+
+### Live Mode
+
+Test prompts against the real Claude API:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+npm install @anthropic-ai/sdk
+claude-test test --mode live
+claude-test benchmark prompts/my-prompt.yaml
+```
+
+See [Claude Code Integration Guide](docs/claude-code-integration.md) for the full setup guide.
 
 ## Anthropic-Only Focus
 
