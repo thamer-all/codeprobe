@@ -1,7 +1,7 @@
 {
   "name": "codeprobe",
-  "version": "0.1.0",
-  "description": "DevTools for Claude — context engineering toolkit for Claude Code",
+  "version": "0.2.0",
+  "description": "DevTools for AI Coding — context engineering toolkit for Claude, Cursor, Copilot, and more",
   "type": "module",
   "main": "dist/cli.js",
   "bin": {
