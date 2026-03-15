@@ -19,6 +19,12 @@ npm install -g codeprobe
 ## Quickstart
 
 ```bash
+# Instant dashboard — just run codeprobe
+codeprobe
+
+# Full project scan in one command
+codeprobe scan
+
 # Set up starter files and config
 codeprobe init
 
@@ -28,21 +34,27 @@ codeprobe test
 # Analyze your repo's context footprint
 codeprobe context
 
-# Simulate whether your repo fits in Claude's context window
-codeprobe simulate
-
-# Build an optimized context packing plan
-codeprobe pack --target 1m
-
-# Lint your prompts for quality issues
-codeprobe lint
-
-# Check environment readiness
-codeprobe doctor
-
 # Generate a CLAUDE.md from repo analysis
 codeprobe generate-claudemd
 ```
+
+## How It Works
+
+```bash
+# Just type codeprobe — instant dashboard
+codeprobe
+
+# Full project scan in one command
+codeprobe scan
+
+# Quick summary
+codeprobe summary
+
+# CI/CD gate — one command, clear pass/fail
+codeprobe check
+```
+
+codeprobe is designed to be useful immediately. No setup required for context analysis — just run it in any project directory.
 
 ## Core Commands
 
@@ -69,6 +81,8 @@ codeprobe generate-claudemd
 | `repl` | Interactive prompt playground |
 | `generate-claudemd` | Generate a CLAUDE.md from repo analysis |
 | `workflow [path]` | Detect agentic workflow patterns (tasks, plans, lessons) |
+| `check [path]` | CI-friendly gate — run all validations, exit 0 or 1 |
+| `summary [path]` | Quick one-screen project overview |
 | `install-hook` | Install a Claude Code hook for prompt testing |
 
 ## Prompt Testing
@@ -254,12 +268,21 @@ benchmarkDefaults:
 
 ## CI Integration
 
-Add to your GitHub Actions workflow:
+The simplest CI setup is a single command:
 
 ```yaml
 - name: Install codeprobe
   run: npm install -g codeprobe
 
+- name: Run all checks
+  run: codeprobe check --json
+```
+
+`codeprobe check` runs tests, lint, security, and validation in one shot. Exit code 0 means all clear, 1 means issues found.
+
+For more granular control, run individual commands:
+
+```yaml
 - name: Validate prompts
   run: codeprobe validate --json
 

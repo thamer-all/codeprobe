@@ -40,6 +40,8 @@ import { registerAbCommand } from './commands/ab.js';
 import { registerScoreCommand } from './commands/score.js';
 import { registerFlakyCommand } from './commands/flaky.js';
 import { registerScanCommand } from './commands/scan.js';
+import { registerCheckCommand } from './commands/check.js';
+import { registerSummaryCommand } from './commands/summary.js';
 import { handleError } from './utils/errors.js';
 
 const program = new Command();
@@ -96,6 +98,8 @@ registerAbCommand(program);
 registerScoreCommand(program);
 registerFlakyCommand(program);
 registerScanCommand(program);
+registerCheckCommand(program);
+registerSummaryCommand(program);
 
 // Smart default: if no command given, run dashboard on current directory
 if (process.argv.length === 2) {
