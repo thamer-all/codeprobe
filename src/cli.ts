@@ -28,6 +28,7 @@ import { registerGenerateClaudeMdCommand } from './commands/generateClaudeMd.js'
 import { registerInstallHookCommand } from './commands/installHook.js';
 import { registerWorkflowCommand } from './commands/workflow.js';
 import { registerModelsCommand } from './commands/models.js';
+import { registerUiCommand } from './commands/ui.js';
 import { handleError } from './utils/errors.js';
 
 const program = new Command();
@@ -70,5 +71,6 @@ registerGenerateClaudeMdCommand(program);
 registerInstallHookCommand(program);
 registerWorkflowCommand(program);
 registerModelsCommand(program);
+registerUiCommand(program);
 
 program.parseAsync(process.argv).catch(handleError);
