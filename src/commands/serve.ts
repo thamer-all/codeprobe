@@ -9,7 +9,7 @@
 
 import { Command } from 'commander';
 import { createInterface } from 'node:readline';
-import { resolve } from 'node:path';
+import { resolve, relative, isAbsolute } from 'node:path';
 import { analyzeContext } from '../core/contextAnalyzer.js';
 import { scanForClaudeAssets } from '../core/agentTracer.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
@@ -183,7 +183,8 @@ async function handleRequest(req: JsonRpcRequest): Promise<JsonRpcResponse> {
     // Validate path — restrict to current working directory
     const cwd = process.cwd();
     const resolvedPath = resolve(path);
-    if (!resolvedPath.startsWith(cwd)) {
+    const rel = relative(cwd, resolvedPath);
+    if (rel.startsWith('..') || isAbsolute(rel)) {
       return {
         jsonrpc: '2.0',
         id: req.id,
@@ -270,7 +271,7 @@ async function handleRequest(req: JsonRpcRequest): Promise<JsonRpcResponse> {
         id: req.id,
         error: {
           code: -32000,
-          message: err instanceof Error ? err.message : String(err),
+          message: err instanceof Error ? err.message.slice(0, 200) : 'Internal error',
         },
       };
     }

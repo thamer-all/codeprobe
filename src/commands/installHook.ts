@@ -53,14 +53,28 @@ export function registerInstallHookCommand(program: Command): void {
         }
       }
 
+      // Validate event name to prevent prototype pollution
+      const eventName = options.event;
+      const validEvents = new Set([
+        'PreCommit', 'PostCommit', 'PrePush', 'PostPush',
+        'PreToolUse', 'PostToolUse', 'PreBuild', 'PostBuild',
+        'Notification', 'Stop',
+      ]);
+      if (!validEvents.has(eventName)) {
+        console.error(chalk.red(
+          `Error: invalid hook event "${eventName}". Valid events: ${[...validEvents].join(', ')}`,
+        ));
+        process.exitCode = 1;
+        return;
+      }
+
       // Ensure hooks object exists
       if (!settings.hooks) {
         settings.hooks = {};
       }
 
       // Ensure event array exists
-      const eventName = options.event;
-      if (!settings.hooks[eventName]) {
+      if (!Object.prototype.hasOwnProperty.call(settings.hooks, eventName)) {
         settings.hooks[eventName] = [];
       }
 

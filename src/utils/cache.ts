@@ -43,9 +43,20 @@ export async function readCache<T>(key: string): Promise<T | null> {
     if (!(await fileExists(path))) return null;
 
     const raw = await readFile(path, 'utf-8');
-    const envelope = JSON.parse(raw) as { data: T; timestamp: number };
+    const parsed: unknown = JSON.parse(raw);
 
-    return envelope.data;
+    // Validate envelope structure before using
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      !('data' in parsed) ||
+      !('timestamp' in parsed) ||
+      typeof (parsed as Record<string, unknown>).timestamp !== 'number'
+    ) {
+      return null;
+    }
+
+    return (parsed as { data: T; timestamp: number }).data;
   } catch {
     return null;
   }

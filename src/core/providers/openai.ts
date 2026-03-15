@@ -8,7 +8,10 @@
 import type { ProviderClient, ProviderRequest, ProviderResponse } from './base.js';
 
 function sanitizeError(text: string): string {
-  return text.replace(/(?:key|token|bearer|authorization)[=:\s]*[a-zA-Z0-9_\-\.]{10,}/gi, '[REDACTED]');
+  return text
+    .replace(/(?:key|token|bearer|authorization|api[_-]?key|secret|password|x-api-key)[=:\s]*["']?[a-zA-Z0-9_\-\.]{10,}["']?/gi, '[REDACTED]')
+    .replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED]')
+    .replace(/Bearer\s+[a-zA-Z0-9_\-\.]{10,}/gi, 'Bearer [REDACTED]');
 }
 
 export interface OpenAIProviderOptions {

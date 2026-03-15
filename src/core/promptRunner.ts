@@ -4,7 +4,8 @@
 
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, relative, isAbsolute } from 'node:path';
+import { realpath } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import yaml from 'js-yaml';
 import { z } from 'zod';
@@ -99,8 +100,21 @@ export async function parsePromptSpec(filePath: string): Promise<PromptSpec> {
     for (const test of parsed.tests) {
       if (test.inputFile && !test.input) {
         const inputPath = resolve(specDir, test.inputFile);
-        // Prevent path traversal
-        if (!inputPath.startsWith(specDir) && !inputPath.startsWith(process.cwd())) {
+        // Resolve symlinks to prevent bypass
+        let realInputPath: string;
+        try {
+          realInputPath = await realpath(inputPath);
+        } catch {
+          throw new Error(`Could not resolve inputFile path: "${test.inputFile}"`);
+        }
+        const realSpecDir = await realpath(specDir);
+        const realCwd = await realpath(process.cwd());
+        // Prevent path traversal — must be within specDir OR cwd
+        const relToSpec = relative(realSpecDir, realInputPath);
+        const relToCwd = relative(realCwd, realInputPath);
+        const escapesSpec = relToSpec.startsWith('..') || isAbsolute(relToSpec);
+        const escapesCwd = relToCwd.startsWith('..') || isAbsolute(relToCwd);
+        if (escapesSpec && escapesCwd) {
           throw new Error(`Path traversal detected in inputFile: "${test.inputFile}"`);
         }
         const inputContent = await readTextFile(inputPath);
@@ -329,10 +343,17 @@ export async function evaluateAssertions(
   // custom function check
   if (expect.custom) {
     try {
-      // Run in a sandboxed context with no access to require, process, fs, etc.
-      const sandbox = { output, result: false };
+      // Block dangerous patterns before execution
+      const forbidden = /\b(require|import|process|global|globalThis|Proxy|Reflect|constructor|__proto__|prototype|Function|eval|setTimeout|setInterval|setImmediate)\b/;
+      if (forbidden.test(expect.custom)) {
+        throw new Error('Custom assertion contains forbidden keywords');
+      }
+      // Run in a minimal sandbox — no access to require, process, fs, etc.
+      const sandbox = Object.create(null) as { output: string; result: boolean };
+      sandbox.output = output;
+      sandbox.result = false;
       const code = `result = (${expect.custom})(output);`;
-      runInNewContext(code, sandbox, { timeout: 1000 }); // 1 second timeout
+      runInNewContext(code, sandbox, { timeout: 1000, microtaskMode: 'afterEvaluate' });
       const passed = Boolean(sandbox.result);
       results.push({
         type: 'custom',

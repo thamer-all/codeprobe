@@ -6,8 +6,31 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
+import { z } from 'zod';
 import type { CodeprobeConfig } from '../types/config.js';
 import { fileExists } from './fs.js';
+
+const ConfigSchema = z.object({
+  defaultModel: z.string().optional(),
+  defaultContextTarget: z.enum(['200k', '1m']).optional(),
+  ignorePaths: z.array(z.string()).optional(),
+  caching: z.boolean().optional(),
+  watchDefaults: z.object({
+    debounceMs: z.number().optional(),
+    clearScreen: z.boolean().optional(),
+  }).optional(),
+  contextBudgets: z.object({
+    systemPrompt: z.number().optional(),
+    coreFiles: z.number().optional(),
+    docs: z.number().optional(),
+    toolMeta: z.number().optional(),
+  }).optional(),
+  benchmarkDefaults: z.object({
+    models: z.array(z.string()).optional(),
+    runs: z.number().optional(),
+    warmup: z.boolean().optional(),
+  }).optional(),
+}).passthrough();
 
 const CONFIG_FILE_NAMES = [
   '.codeprobe.json',
@@ -33,10 +56,10 @@ export async function loadConfig(rootPath: string): Promise<CodeprobeConfig> {
     if (await fileExists(configPath)) {
       try {
         const content = await readFile(configPath, 'utf-8');
-        if (name.endsWith('.json')) {
-          return JSON.parse(content) as CodeprobeConfig;
-        }
-        return yaml.load(content) as CodeprobeConfig;
+        const raw = name.endsWith('.json')
+          ? JSON.parse(content) as unknown
+          : yaml.load(content) as unknown;
+        return ConfigSchema.parse(raw) as CodeprobeConfig;
       } catch {
         // Fall through to default
       }

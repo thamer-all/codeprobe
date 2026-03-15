@@ -8,7 +8,7 @@ import { Command } from 'commander';
 import { createServer } from 'node:http';
 import { basename } from 'node:path';
 import { stat } from 'node:fs/promises';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { platform } from 'node:os';
 
 import { resolvePath } from '../utils/paths.js';
@@ -118,13 +118,10 @@ async function analyzeWorkflowLite(
  */
 function openBrowser(url: string): void {
   const os = platform();
-  const cmd =
-    os === 'darwin'
-      ? `open "${url}"`
-      : os === 'win32'
-        ? `start "${url}"`
-        : `xdg-open "${url}"`;
-  exec(cmd, () => {
+  // Use execFile with array args to avoid shell injection
+  const cmd = os === 'darwin' ? 'open' : os === 'win32' ? 'cmd' : 'xdg-open';
+  const args = os === 'win32' ? ['/c', 'start', '', url] : [url];
+  execFile(cmd, args, () => {
     // ignore errors — browser may simply not be available
   });
 }
@@ -137,7 +134,8 @@ export function registerUiCommand(program: Command): void {
     .option('--no-open', 'Do not open browser automatically')
     .action(async (pathArg: string | undefined, options: { port: string; open: boolean }) => {
       const targetPath = resolvePath(pathArg ?? '.');
-      const port = parseInt(options.port, 10) || 3333;
+      const parsed = parseInt(options.port, 10);
+      const port = (!isNaN(parsed) && parsed >= 1 && parsed <= 65535) ? parsed : 3333;
 
       // Validate path
       try {

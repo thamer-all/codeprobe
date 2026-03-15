@@ -68,8 +68,8 @@ const INTERPOLATION_RULES: ReadonlyArray<SecurityRule> = [
       /\{\{[^}]*\}\}/,       // Mustache/Handlebars
       /\{%[^%]*%\}/,         // Jinja2
       /<%[^%]*%>/,           // ERB
-      /\$\{.*user.*\}/i,     // User input in template
-      /\{\{.*input.*\}\}/i,  // Input in template
+      /\$\{[^}]{0,100}user[^}]{0,100}\}/i,     // User input in template
+      /\{\{[^}]{0,100}input[^}]{0,100}\}\}/i,  // Input in template
     ],
     message: 'Template interpolation detected without apparent sanitization. User input could be injected into the prompt.',
   },
@@ -104,7 +104,7 @@ const DANGEROUS_STRUCTURE_RULES: ReadonlyArray<SecurityRule> = [
     id: 'dangerous-structure',
     severity: 'high',
     patterns: [
-      /you\s+(can|may|have|are\s+allowed\s+to)\s+.*\b(execute|run|eval|delete|drop|rm\s+-rf)\b/i,
+      /you\s+(can|may|have|are\s+allowed\s+to)\s+[\s\S]{0,100}?\b(execute|run|eval|delete|drop|rm\s+-rf)\b/i,
       /full\s+access\s+to/i,
       /unrestricted\s+access/i,
       /no\s+restrictions/i,

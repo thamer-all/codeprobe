@@ -6,7 +6,10 @@
 import type { ProviderClient, ProviderRequest, ProviderResponse } from './base.js';
 
 function sanitizeError(text: string): string {
-  return text.replace(/(?:key|token|bearer|authorization)[=:\s]*[a-zA-Z0-9_\-\.]{10,}/gi, '[REDACTED]');
+  return text
+    .replace(/(?:key|token|bearer|authorization|api[_-]?key|secret|password|x-goog-api-key)[=:\s]*["']?[a-zA-Z0-9_\-\.]{10,}["']?/gi, '[REDACTED]')
+    .replace(/AIza[a-zA-Z0-9_\-]{30,}/g, '[REDACTED]')
+    .replace(/Bearer\s+[a-zA-Z0-9_\-\.]{10,}/gi, 'Bearer [REDACTED]');
 }
 
 export class GoogleProvider implements ProviderClient {
@@ -34,7 +37,11 @@ export class GoogleProvider implements ProviderClient {
       body.systemInstruction = { parts: [{ text: request.system }] };
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${request.model}:generateContent`;
+    // Validate model name to prevent URL injection
+    if (!/^[a-zA-Z0-9_\-.:]+$/.test(request.model)) {
+      throw new Error(`Invalid model name: ${request.model}`);
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(request.model)}:generateContent`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
