@@ -268,6 +268,25 @@ benchmarkDefaults:
 
 ## CI Integration
 
+### GitHub Action
+
+Add to your workflow:
+
+```yaml
+- uses: thamer-all/codeprobe@main
+  with:
+    command: check    # or: scan, test, lint, security, context, quality
+    post-comment: 'true'  # Posts results as PR comment
+```
+
+Or use the CLI directly:
+
+```yaml
+- run: npm install -g codeprobe && codeprobe check --json
+```
+
+### Manual Setup
+
 The simplest CI setup is a single command:
 
 ```yaml

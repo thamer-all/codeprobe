@@ -1,0 +1,20 @@
+name: Codeprobe PR Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  codeprobe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run codeprobe check
+        uses: thamer-all/codeprobe@main
+        with:
+          command: scan
+          post-comment: 'true'
