@@ -199,11 +199,26 @@ export async function runBenchmark(
       if (mode === 'mock') {
         benchmarkRuns.push(generateMockRun(i, spec, model));
       } else {
-        // Live mode: placeholder for real API calls.
-        // In production this would call the Anthropic Messages API.
-        throw new Error(
-          `Live benchmarking is not yet implemented. Use mode: 'mock' for offline development.`,
-        );
+        // Live mode: call Anthropic API via dynamic import.
+        const { callAnthropic } = await import('./anthropicClient.js');
+        const testInput = spec.tests?.[0]?.input ?? 'Hello';
+        const fullPrompt = spec.prompt.replace(/\{\{input\}\}/g, testInput);
+        const start = Date.now();
+
+        const response = await callAnthropic({
+          model,
+          system: spec.system,
+          messages: [{ role: 'user', content: fullPrompt }],
+        });
+
+        const latency = Date.now() - start;
+        benchmarkRuns.push({
+          runIndex: i,
+          score: 1.0, // Live mode: user evaluates quality
+          tokens: response.inputTokens + response.outputTokens,
+          latency,
+          output: response.content,
+        });
       }
     }
 
