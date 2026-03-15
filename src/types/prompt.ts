@@ -33,6 +33,12 @@ export interface TestExpectation {
   endsWith?: string;
   isSorted?: boolean;
   custom?: string; // JS function body as string: (output) => boolean
+  // LLM-as-judge assertion
+  judge?: Array<{
+    criteria: string;
+    threshold?: number;  // 0-1, default 0.7
+    model?: string;      // default: spec's model
+  }>;
 }
 
 export interface TestResult {

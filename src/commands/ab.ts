@@ -16,8 +16,8 @@ import { scoreOutput as canonicalScoreOutput } from '../core/scorer.js';
 // Scorer — wraps the canonical scorer to produce a numeric score
 // ---------------------------------------------------------------------------
 
-function scoreOutput(output: string, spec: PromptSpec, test: PromptTest): number {
-  const result = canonicalScoreOutput(output, spec, test);
+async function scoreOutput(output: string, spec: PromptSpec, test: PromptTest): Promise<number> {
+  const result = await canonicalScoreOutput(output, spec, test);
   return result.overall;
 }
 
@@ -85,9 +85,9 @@ async function runAbTest(
       const resultA = await runSingleTest(specA, test, options);
       const expectA = test.expect;
       const assertionsA = expectA
-        ? evaluateAssertions(resultA.output, expectA)
+        ? await evaluateAssertions(resultA.output, expectA)
         : [];
-      totalScoreA += scoreOutput(resultA.output, specA, test);
+      totalScoreA += await scoreOutput(resultA.output, specA, test);
       lastAssertionsA = assertionsA;
       lastOutputA = resultA.output;
 
@@ -95,9 +95,9 @@ async function runAbTest(
       const resultB = await runSingleTest(specB, test, options);
       const expectB = test.expect;
       const assertionsB = expectB
-        ? evaluateAssertions(resultB.output, expectB)
+        ? await evaluateAssertions(resultB.output, expectB)
         : [];
-      totalScoreB += scoreOutput(resultB.output, specB, test);
+      totalScoreB += await scoreOutput(resultB.output, specB, test);
       lastAssertionsB = assertionsB;
       lastOutputB = resultB.output;
     }

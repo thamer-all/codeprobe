@@ -127,7 +127,7 @@ export async function runDatasetTests(
     // If the dataset row has its own expected field, evaluate those assertions
     let assertions: AssertionResult[] = testResult.assertions;
     if (row.expected && testCase.expect) {
-      assertions = evaluateAssertions(testResult.output, testCase.expect);
+      assertions = await evaluateAssertions(testResult.output, testCase.expect);
     }
 
     const rowPassed =

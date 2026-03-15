@@ -44,6 +44,7 @@ import { registerCheckCommand } from './commands/check.js';
 import { registerSummaryCommand } from './commands/summary.js';
 import { registerExportCommand } from './commands/export.js';
 import { registerServeCommand } from './commands/serve.js';
+import { registerQualityCommand } from './commands/quality.js';
 import { handleError } from './utils/errors.js';
 
 const program = new Command();
@@ -104,6 +105,7 @@ registerCheckCommand(program);
 registerSummaryCommand(program);
 registerExportCommand(program);
 registerServeCommand(program);
+registerQualityCommand(program);
 
 // Smart default: if no command given, run dashboard on current directory
 if (process.argv.length === 2) {

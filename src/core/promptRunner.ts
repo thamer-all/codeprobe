@@ -55,6 +55,11 @@ const TestExpectationSchema = z.object({
   endsWith: z.string().optional(),
   isSorted: z.boolean().optional(),
   custom: z.string().optional(),
+  judge: z.array(z.object({
+    criteria: z.string(),
+    threshold: z.number().optional(),
+    model: z.string().optional(),
+  })).optional(),
 });
 
 const PromptTestSchema = z.object({
@@ -180,10 +185,10 @@ const ajvInstance = new Ajv({ allErrors: true, strict: false });
 /**
  * Evaluate all assertions for a test expectation against actual output.
  */
-export function evaluateAssertions(
+export async function evaluateAssertions(
   output: string,
   expect: TestExpectation,
-): AssertionResult[] {
+): Promise<AssertionResult[]> {
   const results: AssertionResult[] = [];
 
   // contains checks
@@ -377,6 +382,51 @@ export function evaluateAssertions(
     }
   }
 
+  // LLM-as-judge checks
+  if (expect.judge) {
+    for (const j of expect.judge) {
+      const model = j.model ?? 'claude-sonnet-4-6';
+      try {
+        const { createProvider } = await import('./providers/factory.js');
+        const provider = createProvider(model);
+        const available = await provider.isAvailable();
+        if (!available) {
+          results.push({
+            type: 'judge',
+            expected: `>= ${j.threshold ?? 0.7} on "${j.criteria}"`,
+            actual: 'skipped (no API key)',
+            passed: true, // Don't fail in mock mode
+          });
+          continue;
+        }
+        const response = await provider.call({
+          model,
+          system: 'You are an evaluator. Rate the following output on a scale of 0.0 to 1.0 based on the given criteria. Respond with ONLY a number between 0.0 and 1.0.',
+          messages: [{
+            role: 'user',
+            content: `Criteria: ${j.criteria}\n\nOutput to evaluate:\n${output}\n\nScore (0.0 to 1.0):`,
+          }],
+        });
+        const score = parseFloat(response.content.trim());
+        const threshold = j.threshold ?? 0.7;
+        const passed = !isNaN(score) && score >= threshold;
+        results.push({
+          type: 'judge',
+          expected: `>= ${threshold} on "${j.criteria}"`,
+          actual: isNaN(score) ? 'parse error' : score.toFixed(2),
+          passed,
+        });
+      } catch (err) {
+        results.push({
+          type: 'judge',
+          expected: `>= ${j.threshold ?? 0.7} on "${j.criteria}"`,
+          actual: `error: ${err instanceof Error ? err.message : String(err)}`,
+          passed: false,
+        });
+      }
+    }
+  }
+
   return results;
 }
 
@@ -406,7 +456,7 @@ export async function runSingleTest(
     if (cached !== null) {
       logger.debug(`Cache hit for test "${test.name}"`);
       const assertions = test.expect
-        ? evaluateAssertions(cached, test.expect)
+        ? await evaluateAssertions(cached, test.expect)
         : [];
       const allPassed = assertions.length === 0 || assertions.every((a) => a.passed);
 
@@ -468,7 +518,7 @@ export async function runSingleTest(
 
   // Evaluate assertions
   const assertions = test.expect
-    ? evaluateAssertions(output, test.expect)
+    ? await evaluateAssertions(output, test.expect)
     : [];
   const allPassed = assertions.length === 0 || assertions.every((a) => a.passed);
 

@@ -27,46 +27,46 @@ describe('parsePromptSpec', () => {
 });
 
 describe('evaluateAssertions', () => {
-  it('contains: passes when output includes the string', () => {
+  it('contains: passes when output includes the string', async () => {
     const expectations: TestExpectation = { contains: ['hello'] };
-    const results = evaluateAssertions('hello world', expectations);
+    const results = await evaluateAssertions('hello world', expectations);
     expect(results).toHaveLength(1);
     expect(results[0]!.passed).toBe(true);
   });
 
-  it('contains: fails when output does not include the string', () => {
+  it('contains: fails when output does not include the string', async () => {
     const expectations: TestExpectation = { contains: ['goodbye'] };
-    const results = evaluateAssertions('hello world', expectations);
+    const results = await evaluateAssertions('hello world', expectations);
     expect(results).toHaveLength(1);
     expect(results[0]!.passed).toBe(false);
   });
 
-  it('notContains: passes when output does not include the string', () => {
+  it('notContains: passes when output does not include the string', async () => {
     const expectations: TestExpectation = { notContains: ['goodbye'] };
-    const results = evaluateAssertions('hello world', expectations);
+    const results = await evaluateAssertions('hello world', expectations);
     expect(results).toHaveLength(1);
     expect(results[0]!.passed).toBe(true);
   });
 
-  it('regex: passes when pattern matches (with m flag)', () => {
+  it('regex: passes when pattern matches (with m flag)', async () => {
     const expectations: TestExpectation = { regex: ['^- '] };
     const output = '- bullet point one\n- bullet point two';
-    const results = evaluateAssertions(output, expectations);
+    const results = await evaluateAssertions(output, expectations);
     expect(results).toHaveLength(1);
     expect(results[0]!.passed).toBe(true);
   });
 
-  it('regex: fails when pattern does not match', () => {
+  it('regex: fails when pattern does not match', async () => {
     const expectations: TestExpectation = { regex: ['^\\d{4}-\\d{2}-\\d{2}$'] };
     const output = 'no date here';
-    const results = evaluateAssertions(output, expectations);
+    const results = await evaluateAssertions(output, expectations);
     expect(results).toHaveLength(1);
     expect(results[0]!.passed).toBe(false);
   });
 
-  it('equals: passes on exact match (trimmed)', () => {
+  it('equals: passes on exact match (trimmed)', async () => {
     const expectations: TestExpectation = { equals: 'exact match' };
-    const results = evaluateAssertions('  exact match  ', expectations);
+    const results = await evaluateAssertions('  exact match  ', expectations);
     expect(results).toHaveLength(1);
     expect(results[0]!.passed).toBe(true);
   });

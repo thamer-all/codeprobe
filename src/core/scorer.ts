@@ -41,7 +41,7 @@ function gradeFromScore(score: number): string {
 // Criterion 1: Assertion pass rate (weight 0.4)
 // ---------------------------------------------------------------------------
 
-function scoreAssertions(output: string, test: PromptTest): CriterionScore {
+async function scoreAssertions(output: string, test: PromptTest): Promise<CriterionScore> {
   const expect = test.expect;
   if (!expect) {
     return {
@@ -52,7 +52,7 @@ function scoreAssertions(output: string, test: PromptTest): CriterionScore {
     };
   }
 
-  const results = evaluateAssertions(output, expect);
+  const results = await evaluateAssertions(output, expect);
   if (results.length === 0) {
     return {
       name: 'Assertions',
@@ -355,9 +355,9 @@ function scoreCompleteness(output: string): CriterionScore {
  *   4. Relevance              (0.15)
  *   5. Completeness           (0.15)
  */
-export function scoreOutput(output: string, spec: PromptSpec, test: PromptTest): ScoreResult {
+export async function scoreOutput(output: string, spec: PromptSpec, test: PromptTest): Promise<ScoreResult> {
   const criteria: CriterionScore[] = [
-    scoreAssertions(output, test),
+    await scoreAssertions(output, test),
     scoreLengthAppropriateness(output, spec, test),
     scoreFormatCompliance(output, spec),
     scoreRelevance(output, spec, test),

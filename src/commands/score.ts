@@ -109,7 +109,7 @@ export function registerScoreCommand(program: Command): void {
 
         for (const test of tests) {
           const result = await runSingleTest(spec, test, runOpts);
-          const scoreResult = scoreOutput(result.output, spec, test);
+          const scoreResult = await scoreOutput(result.output, spec, test);
 
           const scored: ScoredTestResult = {
             testName: result.testName,
@@ -205,7 +205,7 @@ export function registerScoreCommand(program: Command): void {
               const fullSpec = await parsePromptSpec(specFiles.find((f) => f.includes(ps.name)) ?? specFiles[0]!);
               const fullTest = fullSpec.tests?.find((t) => t.name === r.testName);
               const fullScore = fullTest
-                ? scoreOutput(r.output, fullSpec, fullTest)
+                ? await scoreOutput(r.output, fullSpec, fullTest)
                 : null;
               const fullCrit = fullScore?.criteria.find((fc) => fc.name === c.name);
               const details = fullCrit?.details ?? '';
