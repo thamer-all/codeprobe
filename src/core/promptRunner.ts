@@ -47,6 +47,14 @@ const TestExpectationSchema = z.object({
   regex: z.array(z.string()).optional(),
   equals: z.string().optional(),
   jsonSchema: z.record(z.unknown()).optional(),
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
+  lineCount: z.number().optional(),
+  wordCount: z.object({ min: z.number().optional(), max: z.number().optional() }).optional(),
+  startsWith: z.string().optional(),
+  endsWith: z.string().optional(),
+  isSorted: z.boolean().optional(),
+  custom: z.string().optional(),
 });
 
 const PromptTestSchema = z.object({
@@ -232,6 +240,102 @@ export function evaluateAssertions(
       actual: output,
       passed: trimmedOutput === trimmedExpected,
     });
+  }
+
+  // minLength check
+  if (expect.minLength !== undefined) {
+    const passed = output.length >= expect.minLength;
+    results.push({
+      type: 'minLength',
+      expected: `>= ${expect.minLength} chars`,
+      actual: `${output.length} chars`,
+      passed,
+    });
+  }
+
+  // maxLength check
+  if (expect.maxLength !== undefined) {
+    const passed = output.length <= expect.maxLength;
+    results.push({
+      type: 'maxLength',
+      expected: `<= ${expect.maxLength} chars`,
+      actual: `${output.length} chars`,
+      passed,
+    });
+  }
+
+  // lineCount check
+  if (expect.lineCount !== undefined) {
+    const lines = output.trim().split('\n').length;
+    const passed = lines === expect.lineCount;
+    results.push({
+      type: 'lineCount',
+      expected: `${expect.lineCount} lines`,
+      actual: `${lines} lines`,
+      passed,
+    });
+  }
+
+  // wordCount check
+  if (expect.wordCount) {
+    const words = output.trim().split(/\s+/).length;
+    const minOk = expect.wordCount.min === undefined || words >= expect.wordCount.min;
+    const maxOk = expect.wordCount.max === undefined || words <= expect.wordCount.max;
+    const passed = minOk && maxOk;
+    const expectedStr = [
+      expect.wordCount.min !== undefined ? `>= ${expect.wordCount.min}` : '',
+      expect.wordCount.max !== undefined ? `<= ${expect.wordCount.max}` : '',
+    ].filter(Boolean).join(', ');
+    results.push({
+      type: 'wordCount',
+      expected: expectedStr + ' words',
+      actual: `${words} words`,
+      passed,
+    });
+  }
+
+  // startsWith check
+  if (expect.startsWith !== undefined) {
+    const passed = output.trimStart().startsWith(expect.startsWith);
+    results.push({
+      type: 'startsWith',
+      expected: expect.startsWith,
+      actual: output.slice(0, expect.startsWith.length + 10),
+      passed,
+    });
+  }
+
+  // endsWith check
+  if (expect.endsWith !== undefined) {
+    const passed = output.trimEnd().endsWith(expect.endsWith);
+    results.push({
+      type: 'endsWith',
+      expected: expect.endsWith,
+      actual: output.slice(-expect.endsWith.length - 10),
+      passed,
+    });
+  }
+
+  // custom function check
+  if (expect.custom) {
+    try {
+      const fn = new Function('output', `return (${expect.custom})(output);`);
+      const result = fn(output);
+      const passed = Boolean(result);
+      results.push({
+        type: 'custom',
+        expected: 'custom function returns truthy',
+        actual: passed ? 'passed' : 'failed',
+        passed,
+      });
+    } catch (err) {
+      results.push({
+        type: 'custom',
+        expected: 'custom function',
+        actual: `error: ${err instanceof Error ? err.message : String(err)}`,
+        passed: false,
+      });
+    }
   }
 
   // jsonSchema check

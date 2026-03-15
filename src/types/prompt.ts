@@ -24,6 +24,15 @@ export interface TestExpectation {
   regex?: string[];
   equals?: string;
   jsonSchema?: Record<string, unknown>;
+  // Advanced assertion types
+  minLength?: number;
+  maxLength?: number;
+  lineCount?: number;
+  wordCount?: { min?: number; max?: number };
+  startsWith?: string;
+  endsWith?: string;
+  isSorted?: boolean;
+  custom?: string; // JS function body as string: (output) => boolean
 }
 
 export interface TestResult {

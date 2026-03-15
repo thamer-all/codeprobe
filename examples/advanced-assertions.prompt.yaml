@@ -1,0 +1,35 @@
+name: advanced-assertions-demo
+description: Demonstrates all assertion types available in codeprobe
+model: claude-sonnet-4-6
+
+system: |
+  You are a helpful assistant. Always respond with exactly 3 bullet points.
+
+prompt: |
+  List 3 benefits of testing prompts:
+  {{input}}
+
+tests:
+  - name: length-check
+    input: "Why should I test my prompts?"
+    expect:
+      minLength: 20
+      maxLength: 2000
+      lineCount: 3
+      startsWith: "- "
+      regex:
+        - "^- "
+
+  - name: word-count-check
+    input: "Brief answer about prompt testing"
+    expect:
+      wordCount:
+        min: 10
+        max: 500
+      contains:
+        - "testing"
+
+  - name: custom-function
+    input: "List benefits"
+    expect:
+      custom: "(output) => output.split('\\n').filter(l => l.startsWith('- ')).length === 3"
