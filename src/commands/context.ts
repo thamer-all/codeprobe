@@ -7,12 +7,13 @@
  */
 
 import { Command } from 'commander';
+import { resolve } from 'node:path';
 import { resolvePath } from '../utils/paths.js';
 import { walkDirectory, getRelativePath } from '../utils/fs.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
 import { readFile, stat } from 'node:fs/promises';
 import { formatBytes, formatTokens, formatTable, formatPercentage } from '../utils/output.js';
-import { setLogLevel } from '../utils/logger.js';
+import { setLogLevel, logger } from '../utils/logger.js';
 import type {
   ContextAnalysis,
   ExtensionStats,
@@ -25,6 +26,28 @@ const DEFAULT_IGNORE_DIRS = new Set([
   '.next', '.nuxt', '__pycache__', '.venv', 'vendor',
   '.cache', '.turbo',
 ]);
+
+/**
+ * Load directory/file name patterns from a .gitignore file.
+ */
+async function loadGitignorePatterns(rootPath: string): Promise<Set<string>> {
+  const patterns = new Set<string>();
+  const gitignorePath = resolve(rootPath, '.gitignore');
+  try {
+    const content = await readFile(gitignorePath, 'utf-8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const clean = trimmed.replace(/^\//, '').replace(/\/\*?$/, '').replace(/^\*\*\//, '');
+      if (clean && !clean.includes('*')) {
+        patterns.add(clean);
+      }
+    }
+  } catch {
+    // No .gitignore or unreadable — fine
+  }
+  return patterns;
+}
 
 const TEXT_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
@@ -48,7 +71,17 @@ const CONTEXT_WINDOWS: Array<{ size: number; label: string }> = [
  * Analyze context usage in a directory.
  */
 async function contextAnalyzer(rootPath: string): Promise<ContextAnalysis> {
-  const entries = await walkDirectory(rootPath, { ignoreDirs: DEFAULT_IGNORE_DIRS });
+  // Build ignore set: defaults + .gitignore patterns
+  const ignoreDirs = new Set(DEFAULT_IGNORE_DIRS);
+  const gitignorePatterns = await loadGitignorePatterns(rootPath);
+  for (const pattern of gitignorePatterns) {
+    ignoreDirs.add(pattern);
+  }
+  if (gitignorePatterns.size > 0) {
+    logger.debug(`Loaded ${gitignorePatterns.size} pattern(s) from .gitignore`);
+  }
+
+  const entries = await walkDirectory(rootPath, { ignoreDirs });
 
   const fileEntries = entries.filter((e) => e.isFile);
   const textFiles: FileTokenInfo[] = [];
@@ -131,11 +164,12 @@ export function registerContextCommand(program: Command): void {
     .description('Analyze repository context usage — token counts, extension breakdown, fit estimates')
     .option('--json', 'Output analysis as JSON')
     .option('-v, --verbose', 'Show all files, not just top 20')
+    .option('--output <file>', 'Write JSON results to a file')
     .action(async (
       pathArg: string | undefined,
-      options: { json?: boolean; verbose?: boolean },
+      options: { json?: boolean; verbose?: boolean; output?: string },
     ) => {
-      if (options.json) {
+      if (options.json || options.output) {
         setLogLevel('silent');
       }
 
@@ -151,6 +185,13 @@ export function registerContextCommand(program: Command): void {
       }
 
       const analysis = await contextAnalyzer(targetPath);
+
+      if (options.output) {
+        const { writeFile } = await import('node:fs/promises');
+        await writeFile(resolvePath(options.output), JSON.stringify(analysis, null, 2));
+        console.log(`Results written to ${options.output}`);
+        return;
+      }
 
       if (options.json) {
         console.log(JSON.stringify(analysis, null, 2));

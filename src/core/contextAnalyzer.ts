@@ -5,6 +5,7 @@
  */
 
 import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
 
 import type {
   ContextAnalysis,
@@ -17,6 +18,38 @@ import { walkDirectory } from '../utils/fs.js';
 import { readTextFile } from '../utils/fs.js';
 import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
 import { logger } from '../utils/logger.js';
+
+// ---------------------------------------------------------------------------
+// .gitignore parsing
+// ---------------------------------------------------------------------------
+
+/**
+ * Load directory/file name patterns from a .gitignore file.
+ *
+ * This is intentionally simplified — it extracts plain directory and file
+ * names (no glob expansion). Patterns containing wildcards after cleanup
+ * are skipped. This is sufficient for the common cases like `dist/`,
+ * `coverage/`, `.cache/`, etc.
+ */
+async function loadGitignorePatterns(rootPath: string): Promise<Set<string>> {
+  const patterns = new Set<string>();
+  const gitignorePath = resolve(rootPath, '.gitignore');
+  try {
+    const content = await readFile(gitignorePath, 'utf-8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      // Extract directory/file name (strip leading/trailing slashes and wildcards)
+      const clean = trimmed.replace(/^\//, '').replace(/\/\*?$/, '').replace(/^\*\*\//, '');
+      if (clean && !clean.includes('*')) {
+        patterns.add(clean);
+      }
+    }
+  } catch {
+    // No .gitignore or unreadable — fine
+  }
+  return patterns;
+}
 
 // ---------------------------------------------------------------------------
 // Paths and extensions to ignore
@@ -107,6 +140,15 @@ export async function analyzeContext(
     for (const p of config.ignorePaths) {
       ignoreDirs.add(p);
     }
+  }
+
+  // Merge patterns from .gitignore (if present)
+  const gitignorePatterns = await loadGitignorePatterns(absoluteRoot);
+  for (const pattern of gitignorePatterns) {
+    ignoreDirs.add(pattern);
+  }
+  if (gitignorePatterns.size > 0) {
+    logger.debug(`Loaded ${gitignorePatterns.size} pattern(s) from .gitignore`);
   }
 
   // Walk the directory tree

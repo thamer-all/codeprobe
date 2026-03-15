@@ -32,6 +32,7 @@ import { registerUiCommand } from './commands/ui.js';
 import { registerDashboardCommand } from './commands/dashboard.js';
 import { registerCostCommand } from './commands/cost.js';
 import { registerGenerateRulesCommand } from './commands/generateRules.js';
+import { registerRegressionCommand } from './commands/regression.js';
 import { handleError } from './utils/errors.js';
 
 const program = new Command();
@@ -78,5 +79,6 @@ registerUiCommand(program);
 registerDashboardCommand(program);
 registerCostCommand(program);
 registerGenerateRulesCommand(program);
+registerRegressionCommand(program);
 
 program.parseAsync(process.argv).catch(handleError);
