@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "codeprobe": {
+      "command": "codeprobe",
+      "args": ["serve", "--stdio"]
+    }
+  }
+}
