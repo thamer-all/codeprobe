@@ -9,6 +9,13 @@ import { formatDuration, formatTable } from '../utils/output.js';
 import { setLogLevel } from '../utils/logger.js';
 import type { PromptSpec } from '../types/prompt.js';
 import type { BenchmarkResult, BenchmarkRun } from '../types/results.js';
+import {
+  getModel,
+  getAllModels,
+  getModelsByProvider,
+  getProviders,
+  estimateCost,
+} from '../core/modelRegistry.js';
 
 const DEFAULT_MODELS = ['claude-sonnet-4-6', 'claude-opus-4-6'];
 
@@ -46,6 +53,7 @@ async function findFirstSpec(dirPath: string): Promise<string | null> {
 
 /**
  * Run benchmark in mock mode — simulates model responses.
+ * Uses the model registry for cost estimation.
  */
 function benchmarkRunner(
   spec: PromptSpec,
@@ -77,9 +85,22 @@ function benchmarkRunner(
     const averageTokens = benchmarkRuns.reduce((s, r) => s + r.tokens, 0) / runs;
     const averageLatency = benchmarkRuns.reduce((s, r) => s + r.latency, 0) / runs;
 
-    // Rough cost estimation (mock) — blended input+output rate per MTok
-    const costPerMToken = model.includes('opus') ? 45.0 : 9.0;
-    const estimatedCost = (averageTokens / 1_000_000) * costPerMToken * runs;
+    // Cost estimation via model registry.  Falls back to a blended heuristic
+    // for models not yet in the registry (backward compat).
+    const modelInfo = getModel(model);
+    let totalEstimatedCost: number;
+    if (modelInfo) {
+      totalEstimatedCost = benchmarkRuns.reduce((sum, r) => {
+        // Rough split: 60 % input, 40 % output
+        const inputTokens = Math.round(r.tokens * 0.6);
+        const outputTokens = r.tokens - inputTokens;
+        return sum + estimateCost(model, inputTokens, outputTokens);
+      }, 0);
+    } else {
+      // Legacy fallback for unknown models
+      const costPerMToken = model.includes('opus') ? 45.0 : 9.0;
+      totalEstimatedCost = (averageTokens / 1_000_000) * costPerMToken * runs;
+    }
 
     return {
       model,
@@ -88,9 +109,65 @@ function benchmarkRunner(
       averageScore,
       averageTokens,
       averageLatency,
-      estimatedCost,
+      estimatedCost: totalEstimatedCost,
     };
   });
+}
+
+/**
+ * Format a number with thousands separators.
+ */
+function formatNumber(n: number): string {
+  return n.toLocaleString('en-US');
+}
+
+/**
+ * Print the model registry table.
+ */
+async function printModelList(providerFilter?: string): Promise<void> {
+  const chalk = (await import('chalk')).default;
+  const models = providerFilter
+    ? getModelsByProvider(providerFilter)
+    : getAllModels();
+
+  if (models.length === 0) {
+    if (providerFilter) {
+      console.log(chalk.yellow(`No models found for provider "${providerFilter}".`));
+      console.log(`Available providers: ${getProviders().join(', ')}`);
+    } else {
+      console.log(chalk.yellow('No models registered.'));
+    }
+    return;
+  }
+
+  const title = providerFilter
+    ? `Models (${providerFilter})`
+    : `All Registered Models (${models.length})`;
+
+  console.log(chalk.bold(`\n${title}\n`));
+
+  const rows = models.map((m) => [
+    m.id,
+    m.provider,
+    m.name,
+    formatNumber(m.contextWindow),
+    formatNumber(m.maxOutput),
+    `$${m.inputPricePer1M.toFixed(2)}`,
+    `$${m.outputPricePer1M.toFixed(2)}`,
+  ]);
+
+  const table = formatTable(
+    ['ID', 'Provider', 'Name', 'Context', 'Max Output', 'Input $/1M', 'Output $/1M'],
+    rows,
+  );
+
+  for (const line of table.split('\n')) {
+    console.log(`  ${line}`);
+  }
+
+  console.log('');
+  console.log(chalk.dim(`  Providers: ${getProviders().join(', ')}`));
+  console.log('');
 }
 
 export function registerBenchmarkCommand(program: Command): void {
@@ -99,11 +176,25 @@ export function registerBenchmarkCommand(program: Command): void {
     .description('Benchmark a prompt spec across multiple models (mock mode)')
     .option('--json', 'Output results as JSON')
     .option('--models <models>', 'Comma-separated list of models')
+    .option('--provider <provider>', 'Filter models by provider (e.g. openai, google)')
     .option('--runs <n>', 'Number of runs per model', '3')
+    .option('--list-models', 'List all available models and exit')
     .action(async (
       pathArg: string | undefined,
-      options: { json?: boolean; models?: string; runs: string },
+      options: {
+        json?: boolean;
+        models?: string;
+        provider?: string;
+        runs: string;
+        listModels?: boolean;
+      },
     ) => {
+      // --list-models: print model registry and exit
+      if (options.listModels) {
+        await printModelList(options.provider);
+        return;
+      }
+
       if (options.json) {
         setLogLevel('silent');
       }
@@ -111,9 +202,25 @@ export function registerBenchmarkCommand(program: Command): void {
       const chalk = (await import('chalk')).default;
       const targetPath = resolvePath(pathArg ?? 'prompts');
       const runs = parseInt(options.runs, 10) || 3;
-      const models = options.models
-        ? options.models.split(',').map((m) => m.trim())
-        : DEFAULT_MODELS;
+
+      // Determine which models to benchmark
+      let models: string[];
+      if (options.models) {
+        models = options.models.split(',').map((m) => m.trim());
+      } else if (options.provider) {
+        const providerModels = getModelsByProvider(options.provider);
+        if (providerModels.length === 0) {
+          console.error(
+            chalk.red(`No models found for provider "${options.provider}".`),
+          );
+          console.error(`Available providers: ${getProviders().join(', ')}`);
+          process.exitCode = 1;
+          return;
+        }
+        models = providerModels.map((m) => m.id);
+      } else {
+        models = DEFAULT_MODELS;
+      }
 
       let specPath: string;
 
@@ -141,7 +248,7 @@ export function registerBenchmarkCommand(program: Command): void {
       console.log(chalk.dim(`  Runs per model: ${runs}`));
       console.log('');
 
-      const rows = results.map((r) => [
+      const tableRows = results.map((r) => [
         r.model,
         `${(r.averageScore * 100).toFixed(1)}%`,
         Math.round(r.averageTokens).toString(),
@@ -151,7 +258,7 @@ export function registerBenchmarkCommand(program: Command): void {
 
       const table = formatTable(
         ['Model', 'Avg Score', 'Avg Tokens', 'Avg Latency', 'Est. Cost'],
-        rows,
+        tableRows,
       );
 
       for (const line of table.split('\n')) {

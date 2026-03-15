@@ -1,15 +1,18 @@
 /**
- * Benchmark runner for Anthropic models.
+ * Benchmark runner for AI models.
  *
- * Runs a prompt spec against one or more Claude models, collecting
+ * Runs a prompt spec against one or more models, collecting
  * score, token usage, latency, and cost data across multiple runs.
  * Supports a mock mode for offline development and CI pipelines.
+ *
+ * Pricing and model metadata are sourced from the central model registry.
  */
 
 import { readFile } from 'node:fs/promises';
 import yaml from 'js-yaml';
 import type { PromptSpec } from '../types/prompt.js';
 import type { BenchmarkResult, BenchmarkRun } from '../types/results.js';
+import { getModel, estimateCost as registryEstimateCost } from './modelRegistry.js';
 
 export interface BenchmarkOptions {
   models?: string[];
@@ -17,18 +20,6 @@ export interface BenchmarkOptions {
   mode?: 'mock' | 'live';
   verbose?: boolean;
 }
-
-/** Anthropic pricing metadata: dollars per million tokens. */
-interface ModelPricing {
-  inputPerMTok: number;
-  outputPerMTok: number;
-}
-
-/** Per-model pricing (USD / million tokens). */
-const MODEL_PRICING: Record<string, ModelPricing> = {
-  'claude-sonnet-4-6': { inputPerMTok: 3, outputPerMTok: 15 },
-  'claude-opus-4-6': { inputPerMTok: 15, outputPerMTok: 75 },
-};
 
 /** Default models to benchmark when none are specified. */
 const DEFAULT_MODELS: string[] = ['claude-sonnet-4-6', 'claude-opus-4-6'];
@@ -102,15 +93,16 @@ function generateMockRun(
 }
 
 /**
- * Compute estimated cost for a set of benchmark runs using Anthropic pricing.
+ * Compute estimated cost for a set of benchmark runs using the model registry.
+ * Falls back to zero when the model is not in the registry.
  */
 function computeCost(
   runs: BenchmarkRun[],
   model: string,
   spec: PromptSpec,
 ): number {
-  const pricing = MODEL_PRICING[model];
-  if (!pricing) return 0;
+  const modelInfo = getModel(model);
+  if (!modelInfo) return 0;
 
   const promptTokens = estimateTokens(spec.prompt);
   const systemTokens = estimateTokens(spec.system ?? '');
@@ -119,9 +111,7 @@ function computeCost(
   let totalCost = 0;
   for (const run of runs) {
     const outputTokens = Math.max(0, run.tokens - inputTokensPerRun);
-    const inputCost = (inputTokensPerRun / 1_000_000) * pricing.inputPerMTok;
-    const outputCost = (outputTokens / 1_000_000) * pricing.outputPerMTok;
-    totalCost += inputCost + outputCost;
+    totalCost += registryEstimateCost(model, inputTokensPerRun, outputTokens);
   }
 
   return totalCost;
@@ -173,7 +163,7 @@ function parseTests(rawTests: unknown[]): PromptSpec['tests'] {
 }
 
 /**
- * Run benchmarks for a prompt spec across one or more Anthropic models.
+ * Run benchmarks for a prompt spec across one or more models.
  *
  * @param specPath  Path to a YAML prompt spec file.
  * @param options   Benchmark configuration.
