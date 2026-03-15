@@ -28,6 +28,7 @@ export function registerTestCommand(program: Command): void {
     .option('--json', 'Output results as JSON')
     .option('-v, --verbose', 'Show verbose output including assertion details')
     .option('--mode <mode>', 'Execution mode: mock or live', 'mock')
+    .option('--model <model>', 'Override the model in the prompt spec (live mode)')
     .option('--dataset <path>', 'Run against a JSONL dataset file')
     .action(async (
       pathArg: string | undefined,
@@ -37,6 +38,7 @@ export function registerTestCommand(program: Command): void {
         json?: boolean;
         verbose?: boolean;
         mode?: string;
+        model?: string;
         dataset?: string;
       },
     ) => {
@@ -48,6 +50,7 @@ export function registerTestCommand(program: Command): void {
         verbose: options.verbose,
         cache: options.cache,
         json: options.json,
+        modelOverride: options.model,
       };
 
       async function runTests(): Promise<void> {

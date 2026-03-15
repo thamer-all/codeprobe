@@ -2,7 +2,7 @@
  * `claude-test repl` — Interactive prompt playground.
  *
  * Provides a REPL interface for loading prompt specs, setting models,
- * and running prompts interactively in mock mode.
+ * and running prompts interactively in mock or live mode.
  */
 
 import { Command } from 'commander';
@@ -16,6 +16,7 @@ interface ReplState {
   model: string;
   systemPrompt: string;
   lastOutput: string;
+  liveMode: boolean;
 }
 
 /**
@@ -56,12 +57,44 @@ function mockExecute(state: ReplState, input: string): string {
   );
 }
 
+/**
+ * Execute a prompt in live mode using the provider factory.
+ */
+async function liveExecute(state: ReplState, input: string): Promise<string> {
+  const { createProvider } = await import('../core/providers/factory.js');
+  const provider = createProvider(state.model);
+
+  const available = await provider.isAvailable();
+  if (!available) {
+    const { getRequiredEnvVar } = await import('../core/providers/factory.js');
+    const envVar = getRequiredEnvVar(state.model);
+    throw new Error(
+      `Provider for "${state.model}" is not available. ` +
+      `Make sure ${envVar} is set in your environment.`,
+    );
+  }
+
+  const prompt = state.spec?.prompt ?? '{{input}}';
+  const rendered = prompt.replace(/\{\{input\}\}/g, input);
+
+  const response = await provider.call({
+    model: state.model,
+    system: state.systemPrompt || undefined,
+    messages: [{ role: 'user', content: rendered }],
+  });
+
+  return response.content;
+}
+
 function printHelp(): void {
   console.log(`
 Commands:
   .load <path>      Load a prompt spec file
   .model <model>    Set the model
   .system <text>    Set the system prompt
+  .live             Toggle live mode on/off
+  .live on          Enable live mode
+  .live off         Disable live mode (back to mock)
   .last             Show last output
   .state            Show current state
   .clear            Clear state
@@ -86,6 +119,7 @@ export function registerReplCommand(program: Command): void {
         model: 'claude-sonnet-4-6',
         systemPrompt: '',
         lastOutput: '',
+        liveMode: false,
       };
 
       console.log(chalk.bold('\nclaude-test REPL'));
@@ -133,7 +167,11 @@ export function registerReplCommand(program: Command): void {
           }
 
           if (trimmed === '.state') {
+            const modeLabel = state.liveMode
+              ? chalk.green('live')
+              : chalk.dim('mock');
             console.log(chalk.bold('  Current State:'));
+            console.log(`    Mode:   ${modeLabel}`);
             console.log(`    Model:  ${state.model}`);
             console.log(`    System: ${state.systemPrompt ? state.systemPrompt.slice(0, 60) + '...' : '(none)'}`);
             console.log(`    Spec:   ${state.spec ? state.spec.name : '(none loaded)'}`);
@@ -146,6 +184,25 @@ export function registerReplCommand(program: Command): void {
             state.systemPrompt = '';
             state.lastOutput = '';
             console.log(chalk.dim('State cleared.'));
+            rl.prompt();
+            return;
+          }
+
+          // .live command — toggle or explicit on/off
+          if (trimmed === '.live' || trimmed === '.live on' || trimmed === '.live off') {
+            if (trimmed === '.live on') {
+              state.liveMode = true;
+            } else if (trimmed === '.live off') {
+              state.liveMode = false;
+            } else {
+              state.liveMode = !state.liveMode;
+            }
+
+            if (state.liveMode) {
+              console.log(chalk.green('Live mode enabled') + chalk.dim(` — API calls will be made to ${state.model}`));
+            } else {
+              console.log(chalk.yellow('Live mode disabled') + chalk.dim(' — using mock responses'));
+            }
             rl.prompt();
             return;
           }
@@ -194,7 +251,14 @@ export function registerReplCommand(program: Command): void {
           }
 
           // Execute the input as a prompt
-          const output = mockExecute(state, trimmed);
+          let output: string;
+          if (state.liveMode) {
+            console.log(chalk.dim('Calling API...'));
+            output = await liveExecute(state, trimmed);
+          } else {
+            output = mockExecute(state, trimmed);
+          }
+
           state.lastOutput = output;
           console.log('');
           console.log(chalk.dim('---'));

@@ -34,6 +34,7 @@ export interface RunOptions {
   verbose?: boolean;
   cache?: boolean;
   json?: boolean;
+  modelOverride?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -323,12 +324,13 @@ export async function runSingleTest(
     if (options.mode === 'mock') {
       output = generateMockOutput(spec.prompt, spec.system, test.input);
     } else {
-      // Live mode: call the Anthropic API
-      const { callAnthropic } = await import('./anthropicClient.js');
-      const model = spec.model ?? 'claude-sonnet-4-6';
+      // Live mode: use provider factory for multi-provider support
+      const { createProvider } = await import('./providers/factory.js');
+      const model = options.modelOverride ?? spec.model ?? 'claude-sonnet-4-6';
       const fullPrompt = spec.prompt.replace('{{input}}', test.input ?? '');
 
-      const response = await callAnthropic({
+      const provider = createProvider(model);
+      const response = await provider.call({
         model,
         system: spec.system,
         messages: [{ role: 'user', content: fullPrompt }],
