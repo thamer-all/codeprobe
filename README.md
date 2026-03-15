@@ -1,399 +1,283 @@
 # codeprobe
 
-**DevTools for AI Coding — Context Engineering Toolkit for Claude, Cursor, Copilot, and more**
+**The safety net for AI-generated code.**
 
-`codeprobe` is a developer toolkit for testing, analyzing, and optimizing AI coding workflows. It helps you write better prompts, understand your repository's context footprint, and build production-grade AI pipelines with any major LLM provider. Works with Claude Code, Cursor, GitHub Copilot, Windsurf, Aider, and other AI coding tools.
+AI coding tools (Claude Code, Cursor, Copilot) break things. They change one file and break three others. They write code that looks right but fails at runtime. They say "done" without running tests.
 
----
-
-## Why Context Engineering Matters
-
-Claude's effectiveness depends on what you put in the context window. Most developers waste context on irrelevant files, oversized prompts, or poorly structured instructions. `codeprobe` gives you the tools to measure, analyze, and optimize every token you send to Claude.
-
-## Install
+`codeprobe` fixes this. Snapshot your project before AI codes, verify nothing broke after.
 
 ```bash
 npm install -g codeprobe
 ```
 
-## Quickstart
+---
+
+## The Workflow
 
 ```bash
-# Instant dashboard — just run codeprobe
-codeprobe
-
-# Full project scan in one command
-codeprobe scan
-
-# Set up starter files and config
-codeprobe init
-
-# Run prompt tests
-codeprobe test
-
-# Analyze your repo's context footprint
-codeprobe context
-
-# Generate a CLAUDE.md from repo analysis
-codeprobe generate-claudemd
+codeprobe guard          # 1. Snapshot before AI coding
+# ... use Claude/Cursor/Copilot ...
+codeprobe verify         # 2. Did AI break anything?
 ```
 
-## How It Works
+That's it. Two commands. Here's what happens:
+
+### `codeprobe guard` — Snapshot before
+
+```
+  codeprobe guard
+
+  ✓ TypeScript           Compiles cleanly              (1200ms)
+  ✓ Tests (vitest)       38 passing                    (800ms)
+  ✓ Lint (eslint)        No issues                     (600ms)
+
+  Files tracked: 128
+  Contracts: 47 exports, 142 imports
+
+  Baseline saved to .codeprobe/baseline.json
+```
+
+Auto-detects your tooling (tsc, vitest/jest/mocha/pytest, eslint/biome). Hashes every source file. Extracts all exported types and functions.
+
+### `codeprobe verify` — Check after
+
+```
+  codeprobe verify
+
+  ✓ TypeScript           Compiles cleanly
+  ✗ Tests (vitest)       2 tests failing (REGRESSION)
+  ✓ Lint (eslint)        No issues
+
+  File Changes
+    5 modified
+    2 added
+
+  Contract Changes
+    1 export signature changed
+      parsePromptSpec (src/core/promptRunner.ts)
+
+  Regressions
+    ✗ Tests: Was passing, now failing: 2 tests failing
+
+  Health Score: 4/10
+```
+
+The AI broke 2 tests and changed a function signature that 11 files depend on. Without codeprobe, you wouldn't know until production.
+
+---
+
+## Before Editing Critical Files
 
 ```bash
-# Just type codeprobe — instant dashboard
-codeprobe
-
-# Full project scan in one command
-codeprobe scan
-
-# Quick summary
-codeprobe summary
-
-# CI/CD gate — one command, clear pass/fail
-codeprobe check
+codeprobe impact src/core/promptRunner.ts
 ```
 
-codeprobe is designed to be useful immediately. No setup required for context analysis — just run it in any project directory.
+```
+  Exported Symbols
+    function   parsePromptSpec (filePath: string): Promise<PromptSpec>
+    function   runPromptTests (specPath: string, options: RunOptions): Promise<TestResult[]>
+    function   evaluateAssertions (output: string, expect: TestExpectation): Promise<AssertionResult[]>
 
-## Core Commands
+  Dependents (11)
+    src/commands/test.ts
+    src/commands/ab.ts
+    src/commands/check.ts
+    ... 8 more
 
-| Command | Description |
+  Risk: CRITICAL (11 dependents, 26 usages)
+```
+
+Now you know exactly what's at stake before the AI touches this file.
+
+---
+
+## Full Project Analysis
+
+```bash
+codeprobe scan
+```
+
+One command, full picture:
+
+```
+  Context
+    128 files | 45.2k tokens | 312.5 KB
+    GPT-4o 128k: fits (35%)  |  200k: fits (23%)  |  1M: fits (5%)
+
+  AI Tools
+    Claude Code: CLAUDE.md
+    Cursor: .cursorrules
+
+  Quality
+    Lint: 0 issues
+    Security: 0 issues
+
+  Overall Health: 8/10
+```
+
+---
+
+## All Commands
+
+### Daily Use (top-level)
+
+| Command | What it does |
 |---------|-------------|
-| `init` | Create starter folders, example prompts, and config |
-| `test [path]` | Run prompt tests with assertions |
-| `diff <a> <b>` | Compare two prompt specs |
-| `context [path]` | Analyze repository context usage and token counts |
-| `simulate [path]` | Simulate whether a repo fits into Claude context windows |
-| `pack [path]` | Build an optimized context packing plan |
-| `benchmark [path]` | Benchmark prompts across Anthropic models |
-| `agents [path]` | Scan for Claude-related workflow assets |
-| `hooks [path]` | Detect hook configurations |
-| `mcp [path]` | Detect MCP server configurations |
-| `lint [path]` | Lint prompt specs for quality problems |
-| `improve <file>` | Suggest prompt improvements |
-| `map [path]` | Produce a repository context map |
-| `heatmap [path]` | Show token-heavy files and hot spots |
-| `explain <file>` | Explain prompt weaknesses and likely failures |
-| `validate [path]` | Validate prompt specs and Claude assets |
-| `security [path]` | Run prompt security and injection checks |
-| `doctor` | Diagnose environment readiness |
-| `repl` | Interactive prompt playground |
-| `generate-claudemd` | Generate a CLAUDE.md from repo analysis |
-| `workflow [path]` | Detect agentic workflow patterns (tasks, plans, lessons) |
-| `check [path]` | CI-friendly gate — run all validations, exit 0 or 1 |
-| `summary [path]` | Quick one-screen project overview |
-| `install-hook` | Install a Claude Code hook for prompt testing |
+| `guard [path]` | Snapshot project health before AI coding |
+| `verify [path]` | Verify nothing broke after AI changes |
+| `scan [path]` | Full project analysis — context, security, quality |
+| `impact <file>` | Show blast radius — who depends on this file |
+| `init` | First-time setup — config, examples, starter files |
+| `doctor` | Check your environment is ready |
+| `serve` | Start as MCP server for Cursor/other AI tools |
+
+### Command Groups
+
+Deeper tools are organized into groups:
+
+```bash
+codeprobe test --help       # Prompt testing
+codeprobe context --help    # Context window analysis
+codeprobe prompt --help     # Prompt quality tools
+codeprobe detect --help     # AI tool & security scanning
+codeprobe generate --help   # Generate AI config files
+codeprobe ui --help         # Dashboards
+```
+
+#### `codeprobe test`
+
+| Subcommand | What it does |
+|------------|-------------|
+| `test run [path]` | Run prompt tests against YAML specs |
+| `test ab <a> <b>` | A/B test two prompts side by side |
+| `test score <file>` | Score prompt outputs (A-F grades) |
+| `test flaky [path]` | Detect flaky tests |
+| `test regression [path]` | Compare against saved baselines |
+| `test history` | View test run trends |
+| `test autotest <file>` | Auto-generate test cases (offline) |
+| `test benchmark [path]` | Benchmark across models |
+| `test check [path]` | CI gate — all validations in one shot |
+
+#### `codeprobe context`
+
+| Subcommand | What it does |
+|------------|-------------|
+| `context analyze [path]` | Token counts, extension breakdown, fit estimates |
+| `context pack [path]` | Optimized context packing plan |
+| `context map [path]` | Token distribution by directory |
+| `context heatmap [path]` | Largest files by token count |
+| `context simulate [path]` | Does your repo fit in the context window? |
+| `context cost [path]` | How much does it cost to send this repo to AI? |
+| `context quality [path]` | Signal-to-noise, redundancy, AI readiness score |
+| `context export [path]` | Pack repo into single AI-friendly file |
+| `context summary [path]` | Quick one-screen overview |
+
+#### `codeprobe detect`
+
+| Subcommand | What it does |
+|------------|-------------|
+| `detect security [path]` | Scan for prompt injection & leaked secrets |
+| `detect contracts [path]` | Extract type/API contracts |
+| `detect agents [path]` | Find AI tool configs (Claude, Cursor, Copilot...) |
+| `detect models` | List all supported models with pricing |
+| `detect hooks [path]` | Detect hook configurations |
+| `detect mcp [path]` | Detect MCP servers |
+| `detect workflow [path]` | Detect agentic workflow patterns |
+
+#### `codeprobe generate`
+
+| Subcommand | What it does |
+|------------|-------------|
+| `generate claudemd [path]` | Generate CLAUDE.md from repo analysis |
+| `generate rules [path]` | Generate .cursorrules, .windsurfrules, copilot config |
+| `generate hook` | Install a Claude Code pre-commit hook |
+
+#### `codeprobe prompt`
+
+| Subcommand | What it does |
+|------------|-------------|
+| `prompt lint [path]` | Lint prompt specs for quality issues |
+| `prompt improve <file>` | Suggest prompt improvements |
+| `prompt explain <file>` | Explain prompt structure & weaknesses |
+| `prompt diff <a> <b>` | Compare two prompt specs |
+| `prompt validate [path]` | Validate YAML structure |
+| `prompt repl` | Interactive prompt playground |
+
+---
 
 ## Prompt Testing
 
-Write prompt specs as YAML files:
+Write prompt specs as YAML:
 
 ```yaml
 name: summarize
-description: Summarize text into 3 bullet points
 model: claude-sonnet-4-6
 
 system: |
-  You are a concise summarizer. Always respond with exactly 3 bullet points.
+  You are a concise summarizer. Respond with exactly 3 bullet points.
 
 prompt: |
-  Summarize the following text in exactly 3 bullet points:
-  {{input}}
+  Summarize: {{input}}
 
 tests:
   - name: basic
-    input: |
-      Claude Code is an agentic coding tool that lives in your terminal.
-      It understands your codebase, can edit files, and run commands.
+    input: "Claude Code is an agentic coding tool in your terminal."
     expect:
-      contains:
-        - Claude Code
-      regex:
-        - "^- "
-
-  - name: from-file
-    inputFile: ./fixtures/article.txt
-    expect:
-      contains:
-        - context
+      contains: ["Claude Code"]
+      regex: ["^- "]
+      minLength: 50
 ```
 
-Run tests:
+Run them:
 
 ```bash
-codeprobe test prompts/
-
-# With watch mode
-codeprobe test --watch
-
-# With caching
-codeprobe test --cache
-
-# JSON output for CI
-codeprobe test --json
+codeprobe test run prompts/         # mock mode (offline, no API key)
+codeprobe test run --mode live      # live mode (needs ANTHROPIC_API_KEY)
+codeprobe test run --json           # JSON output for CI
 ```
 
-### Assertions
+### Assertion Types
 
-| Type | Description |
-|------|-------------|
-| `contains` | Output must include all specified strings |
-| `notContains` | Output must not include any specified strings |
-| `regex` | Output must match all patterns |
-| `equals` | Output must exactly equal the string |
-| `jsonSchema` | Output must validate against JSON Schema |
+| Type | Example |
+|------|---------|
+| `contains` | `["Claude", "API"]` — must include these strings |
+| `notContains` | `["error"]` — must not include these |
+| `regex` | `["^- ", "\\d+"]` — must match patterns |
+| `equals` | `"exact match"` — must equal exactly |
+| `jsonSchema` | `{type: "object", required: ["id"]}` — validate JSON output |
+| `minLength` / `maxLength` | `50` / `500` — length bounds |
+| `judge` | `[{criteria: "Is helpful?", threshold: 0.8}]` — LLM-as-judge |
 
-### Dataset Testing
-
-Test prompts against JSONL datasets:
-
-```bash
-codeprobe test prompts/summarize.prompt.yaml --dataset datasets/sample.jsonl
-```
-
-Dataset format (one JSON object per line):
-
-```json
-{"input": "Text to summarize...", "expected": "key phrase"}
-```
-
-## Context Engineering
-
-This is where `codeprobe` stands apart. These commands help you understand, measure, and optimize what goes into Claude's context window.
-
-### Analyze Context
-
-```bash
-codeprobe context .
-```
-
-Shows scanned files, total bytes, estimated tokens, extension breakdown, largest files, and fit estimates for 200k and 1M windows.
-
-### Simulate Context Fit
-
-```bash
-codeprobe simulate .
-```
-
-Estimates whether your repository fits into Claude's context window with reserved budget for system prompts and tools.
-
-### Pack Context
-
-```bash
-codeprobe pack . --target 1m --optimize
-```
-
-Builds an optimized context packing plan: which files to include first, which to summarize, which to exclude. Budget breakdown across system prompt, core files, docs, and tool metadata.
-
-### Context Map
-
-```bash
-codeprobe map .
-```
-
-Token distribution by directory — see where your context budget goes.
-
-### Token Heatmap
-
-```bash
-codeprobe heatmap . --top 20
-```
-
-Identifies the files consuming the most tokens in your repository.
-
-## Claude Asset Detection
-
-Scan repositories for Claude-related workflow assets.
-
-```bash
-# Find all Claude assets (CLAUDE.md, .claude/, skills, hooks, MCP configs)
-codeprobe agents .
-
-# Detect hook configurations
-codeprobe hooks .
-
-# Find MCP server definitions
-codeprobe mcp .
-```
-
-## Prompt Quality
-
-```bash
-# Lint prompts for common issues
-codeprobe lint prompts/
-
-# Get improvement suggestions
-codeprobe improve prompts/summarize.prompt.yaml
-
-# Explain potential weaknesses
-codeprobe explain prompts/summarize.prompt.yaml
-
-# Security checks for injection risks
-codeprobe security prompts/
-
-# Validate prompt spec structure
-codeprobe validate .
-```
-
-## Configuration
-
-Create `codeprobe.config.yaml` in your project root:
-
-```yaml
-defaultModel: claude-sonnet-4-6
-defaultContextTarget: 1m
-
-ignorePaths:
-  - node_modules
-  - .git
-  - dist
-  - build
-  - coverage
-
-caching: true
-
-contextBudgets:
-  systemPrompt: 10
-  coreFiles: 50
-  docs: 20
-  toolMeta: 10
-
-benchmarkDefaults:
-  models:
-    - claude-sonnet-4-6
-    - claude-opus-4-6
-  runs: 3
-```
+---
 
 ## CI Integration
 
 ### GitHub Action
 
-Add to your workflow:
-
 ```yaml
 - uses: thamer-all/codeprobe@main
   with:
-    command: check    # or: scan, test, lint, security, context, quality
-    post-comment: 'true'  # Posts results as PR comment
+    command: check
+    post-comment: 'true'
 ```
 
-Or use the CLI directly:
+### Manual
 
 ```yaml
-- run: npm install -g codeprobe && codeprobe check --json
+- run: npm install -g codeprobe && codeprobe test check --json
 ```
 
-### Manual Setup
-
-The simplest CI setup is a single command:
-
-```yaml
-- name: Install codeprobe
-  run: npm install -g codeprobe
-
-- name: Run all checks
-  run: codeprobe check --json
-```
-
-`codeprobe check` runs tests, lint, security, and validation in one shot. Exit code 0 means all clear, 1 means issues found.
-
-For more granular control, run individual commands:
-
-```yaml
-- name: Validate prompts
-  run: codeprobe validate --json
-
-- name: Run prompt tests
-  run: codeprobe test --json
-
-- name: Lint prompts
-  run: codeprobe lint --json
-```
-
-`codeprobe` exits with non-zero codes on failures, making it CI-friendly.
-
-## Claude Code Integration
-
-### Context Engineering for Claude Code
-
-codeprobe helps you optimize your project for Claude Code:
+### Pre-commit Hook (Claude Code)
 
 ```bash
-# Analyze how much of your repo fits in Claude's context
-codeprobe context .
-
-# Get a packing plan -- what to include in CLAUDE.md
-codeprobe pack . --target 200k
-
-# Generate a CLAUDE.md from repo analysis
-codeprobe generate-claudemd
-
-# See which files consume the most tokens
-codeprobe heatmap . --top 20
+codeprobe generate hook
 ```
 
-### Hooks
+Adds `codeprobe verify --json` as a pre-commit check.
 
-Run prompt tests automatically when working with Claude Code:
-
-```bash
-# Install a hook for Claude Code
-codeprobe install-hook
-
-# Or configure manually in .claude/settings.json
-```
-
-Example `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "PreCommit": [
-      {
-        "command": "codeprobe test --json",
-        "description": "Run prompt regression tests"
-      }
-    ]
-  }
-}
-```
-
-### Live Mode
-
-Test prompts against the real Claude API:
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-npm install @anthropic-ai/sdk
-codeprobe test --mode live
-codeprobe benchmark prompts/my-prompt.yaml
-```
-
-See [Claude Code Integration Guide](docs/claude-code-integration.md) for the full setup guide.
-
-## AI Tool Detection
-
-codeprobe detects configuration files for all major AI coding tools:
-
-```bash
-codeprobe agents .
-```
-
-Supported tools: Claude Code, Cursor, Windsurf, GitHub Copilot, Aider, Continue.dev, Cline, OpenAI Codex CLI.
-
-### Agentic Workflow Analysis
-
-```bash
-codeprobe workflow .
-```
-
-Detects task tracking (todo.md), self-improvement loops (lessons.md), plan files, and AI tool configurations.
+---
 
 ## Multi-Provider Support
-
-codeprobe supports models from all major AI providers:
 
 | Provider | Models | API Key |
 |----------|--------|---------|
@@ -406,19 +290,50 @@ codeprobe supports models from all major AI providers:
 | Meta | Llama 4 Maverick, Llama 4 Scout | Via OpenAI-compatible API |
 | Local | Ollama, vLLM | No key needed |
 
-Context engineering features (context, simulate, pack, map, heatmap) work offline without any API key.
+All analysis commands (guard, verify, scan, impact, context) work **offline** — no API key needed.
 
-## Examples
+---
 
-See the `examples/` directory for:
+## MCP Server
 
-- `basic-test.prompt.yaml` — Simple prompt testing
-- `with-dataset.prompt.yaml` — Dataset-based evaluation
-- `context-analysis.md` — Example context analysis output
+Expose codeprobe to AI assistants (Cursor, Claude Desktop) via Model Context Protocol:
 
-## Contributing
+```bash
+codeprobe serve
+```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+Add to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "codeprobe": {
+      "command": "codeprobe",
+      "args": ["serve", "--stdio"]
+    }
+  }
+}
+```
+
+---
+
+## Configuration
+
+`codeprobe.config.yaml` in your project root:
+
+```yaml
+defaultModel: claude-sonnet-4-6
+defaultContextTarget: 1m
+ignorePaths: [node_modules, .git, dist, build, coverage]
+caching: true
+contextBudgets:
+  systemPrompt: 10
+  coreFiles: 50
+  docs: 20
+  toolMeta: 10
+```
+
+---
 
 ## License
 
