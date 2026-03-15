@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * claude-test — DevTools for Claude
- * Context engineering toolkit for Claude Code.
+ * claude-test — DevTools for AI Coding
+ * Context engineering toolkit for Claude, Cursor, Copilot, and more.
  */
 
 import { Command } from 'commander';
@@ -27,6 +27,7 @@ import { registerReplCommand } from './commands/repl.js';
 import { registerGenerateClaudeMdCommand } from './commands/generateClaudeMd.js';
 import { registerInstallHookCommand } from './commands/installHook.js';
 import { registerWorkflowCommand } from './commands/workflow.js';
+import { registerModelsCommand } from './commands/models.js';
 import { handleError } from './utils/errors.js';
 
 const program = new Command();
@@ -34,13 +35,15 @@ const program = new Command();
 program
   .name('claude-test')
   .version('0.1.0')
-  .description('DevTools for Claude — context engineering toolkit for Claude Code')
+  .description('DevTools for AI Coding — context engineering toolkit for Claude, Cursor, Copilot, and more')
   .addHelpText('after', `
 Examples:
   $ claude-test init                    Create starter project
   $ claude-test test                    Run all prompt tests
   $ claude-test context .               Analyze repo context usage
   $ claude-test pack . --target 200k    Build context pack plan
+  $ claude-test simulate . --model gpt-4o   Simulate against model context window
+  $ claude-test workflow run ci         Run a named workflow
   $ claude-test doctor                  Check environment setup
 `);
 
@@ -66,5 +69,6 @@ registerReplCommand(program);
 registerGenerateClaudeMdCommand(program);
 registerInstallHookCommand(program);
 registerWorkflowCommand(program);
+registerModelsCommand(program);
 
 program.parseAsync(process.argv).catch(handleError);

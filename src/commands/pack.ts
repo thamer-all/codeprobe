@@ -14,6 +14,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { formatTokens, formatTable, formatPercentage } from '../utils/output.js';
 import { loadConfig } from '../utils/config.js';
 import { setLogLevel } from '../utils/logger.js';
+import { getModel } from '../core/modelRegistry.js';
 import type { PackPlan, FileTokenInfo } from '../types/context.js';
 
 const DEFAULT_IGNORE_DIRS = new Set([
@@ -44,6 +45,7 @@ const DOC_EXTENSIONS = new Set([
 async function contextPacker(
   rootPath: string,
   targetLabel: string,
+  overrideTargetSize?: number,
 ): Promise<PackPlan> {
   const config = await loadConfig(rootPath);
   const rawBudgets = config.contextBudgets ?? {
@@ -59,7 +61,7 @@ async function contextPacker(
     return val > 1 ? val / 100 : val;
   };
 
-  const targetSize = TARGET_SIZES[targetLabel.toLowerCase()];
+  const targetSize = overrideTargetSize ?? TARGET_SIZES[targetLabel.toLowerCase()];
   if (!targetSize) {
     throw new Error(`Unknown target: ${targetLabel}. Use "200k" or "1m".`);
   }
@@ -142,10 +144,11 @@ export function registerPackCommand(program: Command): void {
     .description('Build a context pack plan — prioritize files for inclusion in context windows')
     .option('--json', 'Output pack plan as JSON')
     .option('--target <target>', 'Target context window: 200k or 1m', '1m')
+    .option('--model <model>', 'Use a specific model\'s context window as the target')
     .option('--optimize', 'Show optimization suggestions')
     .action(async (
       pathArg: string | undefined,
-      options: { json?: boolean; target: string; optimize?: boolean },
+      options: { json?: boolean; target: string; model?: string; optimize?: boolean },
     ) => {
       if (options.json) {
         setLogLevel('silent');
@@ -162,7 +165,21 @@ export function registerPackCommand(program: Command): void {
         return;
       }
 
-      const plan = await contextPacker(targetPath, options.target);
+      // If --model is provided, resolve that model's context window
+      let overrideTargetSize: number | undefined;
+      let targetLabel = options.target;
+      if (options.model) {
+        const modelInfo = getModel(options.model);
+        if (!modelInfo) {
+          console.error(`Error: unknown model "${options.model}". Use a model id from the registry (e.g., gpt-4o, claude-sonnet-4-6, gemini-2.5-pro).`);
+          process.exitCode = 1;
+          return;
+        }
+        overrideTargetSize = modelInfo.contextWindow;
+        targetLabel = `${modelInfo.name} (${Math.round(overrideTargetSize / 1000)}k)`;
+      }
+
+      const plan = await contextPacker(targetPath, targetLabel, overrideTargetSize);
 
       if (options.json) {
         console.log(JSON.stringify(plan, null, 2));

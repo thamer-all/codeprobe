@@ -189,13 +189,15 @@ export async function runBenchmark(
       if (mode === 'mock') {
         benchmarkRuns.push(generateMockRun(i, spec, model));
       } else {
-        // Live mode: call Anthropic API via dynamic import.
-        const { callAnthropic } = await import('./anthropicClient.js');
+        // Live mode: call the appropriate provider via factory.
+        const { createProvider } = await import('./providers/factory.js');
+        const provider = createProvider(model);
+
         const testInput = spec.tests?.[0]?.input ?? 'Hello';
         const fullPrompt = spec.prompt.replace(/\{\{input\}\}/g, testInput);
         const start = Date.now();
 
-        const response = await callAnthropic({
+        const response = await provider.call({
           model,
           system: spec.system,
           messages: [{ role: 'user', content: fullPrompt }],

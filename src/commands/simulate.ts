@@ -10,6 +10,7 @@ import { estimateTokens } from '../tokenizers/claudeTokenizer.js';
 import { readFile, stat } from 'node:fs/promises';
 import { formatTokens, formatPercentage } from '../utils/output.js';
 import { setLogLevel } from '../utils/logger.js';
+import { getModel } from '../core/modelRegistry.js';
 import type { SimulationResult, SimulationTarget } from '../types/context.js';
 
 const DEFAULT_IGNORE_DIRS = new Set([
@@ -29,6 +30,7 @@ const TARGETS: Array<{ size: number; label: string }> = [
 async function repositorySimulator(
   rootPath: string,
   targetFilter?: string,
+  customTargets?: Array<{ size: number; label: string }>,
 ): Promise<SimulationResult> {
   const entries = await walkDirectory(rootPath, { ignoreDirs: DEFAULT_IGNORE_DIRS });
   const fileEntries = entries.filter((e) => e.isFile && e.size < 1_000_000);
@@ -44,9 +46,12 @@ async function repositorySimulator(
     }
   }
 
+  // Use custom targets (from --model) if provided, otherwise default targets
+  const baseTargets = customTargets ?? TARGETS;
+
   const activeTargets = targetFilter
-    ? TARGETS.filter((t) => t.label.toLowerCase() === targetFilter.toLowerCase())
-    : TARGETS;
+    ? baseTargets.filter((t) => t.label.toLowerCase() === targetFilter.toLowerCase())
+    : baseTargets;
 
   if (activeTargets.length === 0) {
     throw new Error(`Unknown target: ${targetFilter}. Use "200k" or "1m".`);
@@ -93,9 +98,10 @@ export function registerSimulateCommand(program: Command): void {
     .description('Simulate context fit — estimate whether repo fits in target context windows')
     .option('--json', 'Output simulation as JSON')
     .option('--target <target>', 'Target context window: 200k or 1m')
+    .option('--model <model>', 'Simulate against a specific model\'s context window')
     .action(async (
       pathArg: string | undefined,
-      options: { json?: boolean; target?: string },
+      options: { json?: boolean; target?: string; model?: string },
     ) => {
       if (options.json) {
         setLogLevel('silent');
@@ -112,7 +118,21 @@ export function registerSimulateCommand(program: Command): void {
         return;
       }
 
-      const result = await repositorySimulator(targetPath, options.target);
+      // If --model is provided, use that model's context window as the target
+      let customTargets: Array<{ size: number; label: string }> | undefined;
+      if (options.model) {
+        const modelInfo = getModel(options.model);
+        if (!modelInfo) {
+          console.error(`Error: unknown model "${options.model}". Use a model id from the registry (e.g., gpt-4o, claude-sonnet-4-6, gemini-2.5-pro).`);
+          process.exitCode = 1;
+          return;
+        }
+        const windowSize = modelInfo.contextWindow;
+        const label = `${modelInfo.name} (${Math.round(windowSize / 1000)}k)`;
+        customTargets = [{ size: windowSize, label }];
+      }
+
+      const result = await repositorySimulator(targetPath, options.target, customTargets);
 
       if (options.json) {
         console.log(JSON.stringify(result, null, 2));
